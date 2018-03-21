@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Resources:
+  S3NotificationDemoPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: "Optimus-DEMO-VB-S3Notification-Policy"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "logs:*"
+            Resource: "*"
+
+  S3NotificationDemoRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "Optimus-DEMO-VB-S3Notification-Role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: "Allow"
+          Action:
+            - "sts:AssumeRole"
+          Principal:
+            Service:
+              - "lambda.amazonaws.com"
+      ManagedPolicyArns:
+        - !Ref S3NotificationDemoPolicy
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+
+  S3NotificationDemoFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: "Optimus-DEMO-VB-S3Notification-Lambda"
+      Handler: net.persgroep.demo.s3.S3GetTextBody::handleRequest
+      Runtime: java8
+      CodeUri: ./build/distributions/S3NotificationDemo.zip
+      Role: !GetAtt S3NotificationDemoRole.Arn
+      MemorySize: 512
+      Timeout: 30
+      Tags:
+        Application: FinanceGateway
+      Events:
+        S3FileListener:
+          Type: S3
+          Properties:
+            Bucket: !Ref Bucket
+            Events: s3:ObjectCreated:*
+#            Filter:
+#              S3Key:
+#                Rules:
+#                  - Name: prefix
+#                    Value: 'TODO/'
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "optimus-demo-vb-s3notification-stack-bucket"
+
+Outputs:
+  BucketArn:
+    Description: The ARN of the generated bucket
+    Value: !GetAtt Bucket.Arn

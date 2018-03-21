@@ -1,0 +1,50 @@
+group 'be.vibosoft.aws.s3.sample'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.297'
+    compile 'com.amazonaws:aws-lambda-java-core:1.2.0'
+    compile 'com.amazonaws:aws-lambda-java-events:2.1.0'
+    compile 'com.amazonaws:aws-lambda-java-log4j2:1.0.0'
+    compile 'org.apache.logging.log4j:log4j-core:2.8.2'
+    compile 'org.apache.logging.log4j:log4j-api:2.8.2'
+    compile 'org.apache.logging.log4j:log4j-slf4j-impl:2.8.2'
+
+    compileOnly 'org.projectlombok:lombok:1.16.18'
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+task buildZip(type: Zip) {
+        from compileJava
+        from processResources
+        into('lib') {
+                from configurations.runtime
+            }
+}
+
+build.dependsOn buildZip
+
+task cloudformationPackageS3(type: Exec, dependsOn: [build]) {
+    def cmd = "aws cloudformation package" +
+            " --template-file ./template.yaml" +
+            " --s3-bucket dpp-artifacts-691470845245-eu-west-1-cfn" +
+            " --s3-prefix finance-gateway/CloudFormation" +
+            " --output-template-file template-packaged.yaml"
+    commandLine cmd.split(" ")
+}
+
+task cloudformationDeployDemo(type: Exec, dependsOn: [cloudformationPackageS3]) {
+    def cmd = "aws cloudformation deploy" +
+            " --template-file ./template-packaged.yaml" +
+            " --stack-name Optimus-DEMO-VB-S3Notification-stack" +
+            " --capabilities CAPABILITY_NAMED_IAM"
+    commandLine cmd.split(" ")
+}
